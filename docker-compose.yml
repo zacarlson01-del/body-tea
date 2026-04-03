@@ -1,0 +1,68 @@
+# Docker Compose configuration for ISEA development environment
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: isea-db
+    environment:
+      POSTGRES_DB: isea_db
+      POSTGRES_USER: isea_user
+      POSTGRES_PASSWORD: isea_password_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U isea_user -d isea_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  # Uncomment to run in Docker (requires Docker setup)
+  # api:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: isea-api
+  #   environment:
+  #     - DB_HOST=db
+  #     - DB_PORT=5432
+  #     - DB_NAME=isea_db
+  #     - DB_USER=isea_user
+  #     - DB_PASSWORD=isea_password_dev
+  #     - JWT_SECRET=dev_secret_key_min_32_chars_long_change_in_prod
+  #     - JWT_REFRESH_SECRET=dev_refresh_secret_min_32_chars_change_prod
+  #     - NODE_ENV=development
+  #     - FRONTEND_URL=http://localhost:3000
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./backend/src:/app/src
+
+  # Redis (optional, for session storage)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: isea-redis
+  #   ports:
+  #     - "6379:6379"
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: isea-network
