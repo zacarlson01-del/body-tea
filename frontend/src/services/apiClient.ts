@@ -11,6 +11,7 @@ type SignupPayload = {
   escrow_deposit_amount?: number;
   duration_days?: number;
   personal_item?: string;
+  profile_picture?: File;
 };
 
 type SigninPayload = {
@@ -23,10 +24,12 @@ const API_BASE = '/api/auth';
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 
-function buildHeaders(withAuth = false) {
+function buildHeaders(withAuth = false, isJson = true) {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
   };
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (withAuth && accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -41,13 +44,14 @@ async function handleResponse(response: Response) {
   return body;
 }
 
-async function apiPost(path: string, data: any, auth = false) {
+async function apiPost(path: string, data: FormData | Record<string, unknown>, auth = false, isJson = true) {
+  const body: BodyInit = isJson ? JSON.stringify(data) : (data as FormData);
   return handleResponse(
     await fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: buildHeaders(auth),
+      headers: buildHeaders(auth, isJson),
       credentials: 'include',
-      body: JSON.stringify(data),
+      body,
     }),
   );
 }
@@ -70,7 +74,25 @@ function setTokens(tokens: { accessToken: string; refreshToken: string }) {
 
 export const authService = {
   signup: async (payload: SignupPayload) => {
-    const res = await apiPost('/signup', payload);
+    const hasProfilePicture = payload.profile_picture instanceof File;
+    const body = hasProfilePicture
+      ? (() => {
+          const formData = new FormData();
+          Object.entries(payload).forEach(([key, value]) => {
+            if (value === undefined || value === null) {
+              return;
+            }
+            if (key === 'profile_picture' && value instanceof File) {
+              formData.append(key, value);
+              return;
+            }
+            formData.append(key, String(value));
+          });
+          return formData;
+        })()
+      : payload;
+
+    const res = await apiPost('/signup', body, false, !hasProfilePicture);
     accessToken = res.accessToken; // refreshToken is now in cookie
     return res;
   },

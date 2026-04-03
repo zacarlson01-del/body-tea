@@ -27,7 +27,7 @@ export const SigninForm: React.FC<SigninFormProps> = ({
 
   const onSubmit = async (data: SigninFormData) => {
     try {
-      await signin({ email: data.email, password: data.password });
+      await signin({ username_or_email: data.email, password: data.password });
       reset();
       onSubmitSuccess?.();
     } catch {
