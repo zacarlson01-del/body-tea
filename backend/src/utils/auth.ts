@@ -2,8 +2,19 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_min_32_chars_long';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_key_min_32_chars';
+function requireEnv(name: string, minLen = 32): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Environment variable ${name} is required`);
+  }
+  if (value.length < minLen) {
+    throw new Error(`Environment variable ${name} must be at least ${minLen} characters`);
+  }
+  return value;
+}
+
+const JWT_SECRET = requireEnv('JWT_SECRET', 32);
+const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET', 32);
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '1h';
 const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 

@@ -1,30 +1,4 @@
-import GoTrue from 'gotrue-js';
-
-// Points to Netlify Identity endpoint on the same origin.
-// In production on Netlify this resolves automatically.
-// During local dev, run `netlify dev` (not `npm start`) so /.netlify/identity is proxied.
-const IDENTITY_URL = `${window.location.origin}/.netlify/identity`;
-
-export const auth = new GoTrue({
-  APIUrl: IDENTITY_URL,
-  audience: '',
-  setCookie: false,
-});
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function generateAccountId(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const seg = () =>
-    Array.from({ length: 4 }, () =>
-      chars[Math.floor(Math.random() * chars.length)]
-    ).join('');
-  return `ISEA-${seg()}-${seg()}`;
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface SignupPayload {
+type SignupPayload = {
   email: string;
   first_name: string;
   last_name: string;
@@ -34,74 +8,105 @@ export interface SignupPayload {
   date_of_birth?: string;
   affiliated_authorities?: string;
   postal_code?: string;
-  profile_picture?: File;
   escrow_deposit_amount?: number;
   duration_days?: number;
   personal_item?: string;
-}
+};
 
-export interface SigninPayload {
-  email: string;
+type SigninPayload = {
+  username_or_email: string;
   password: string;
+};
+
+const API_BASE = '/api/auth';
+
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
+
+function buildHeaders(withAuth = false) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (withAuth && accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return headers;
 }
 
-// ─── Auth service ────────────────────────────────────────────────────────────
+async function handleResponse(response: Response) {
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error || 'API request failed');
+  }
+  return body;
+}
+
+async function apiPost(path: string, data: any, auth = false) {
+  return handleResponse(
+    await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: buildHeaders(auth),
+      credentials: 'include',
+      body: JSON.stringify(data),
+    }),
+  );
+}
+
+async function apiGet(path: string, auth = false) {
+  return handleResponse(
+    await fetch(`${API_BASE}${path}`, {
+      method: 'GET',
+      headers: buildHeaders(auth),
+      credentials: 'include',
+    }),
+  );
+}
+
+function setTokens(tokens: { accessToken: string; refreshToken: string }) {
+  accessToken = tokens.accessToken;
+  refreshToken = tokens.refreshToken;
+  return tokens;
+}
 
 export const authService = {
-  /**
-   * Creates a new Netlify Identity user.
-   * All profile fields are stored in user_metadata — visible in Netlify dashboard.
-   * Netlify sends a confirmation email; user must click it before signing in
-   * (disable this in Netlify → Identity → Settings → "Email confirmation").
-   */
   signup: async (payload: SignupPayload) => {
-    return auth.signup(payload.email, payload.password, {
-      full_name: `${payload.first_name} ${payload.last_name}`,
-      first_name: payload.first_name,
-      last_name: payload.last_name,
-      phone: payload.phone || '',
-      gender: payload.gender || '',
-      date_of_birth: payload.date_of_birth || '',
-      affiliated_authorities: payload.affiliated_authorities || '',
-      postal_code: payload.postal_code || '',
-      escrow_account: {
-        account_id: generateAccountId(),
-        account_status: 'pending',
-        escrow_deposit_amount: payload.escrow_deposit_amount || 0,
-        duration_days: payload.duration_days || 30,
-        personal_item: payload.personal_item || '',
-      },
-    });
+    const res = await apiPost('/signup', payload);
+    accessToken = res.accessToken; // refreshToken is now in cookie
+    return res;
   },
 
-  /**
-   * Signs in with email + password.
-   * Returns the GoTrue User object (which includes user_metadata).
-   */
   signin: async (payload: SigninPayload) => {
-    return auth.login(payload.email, payload.password, true);
+    const res = await apiPost('/signin', payload);
+    accessToken = res.accessToken; // refreshToken is now in cookie
+    return res;
   },
 
-  /** Returns the locally cached GoTrue User, or null if not signed in. */
-  getCurrentUser: () => auth.currentUser(),
+  refreshToken: async () => {
+    // No need to send refreshToken in body - it's in the cookie
+    const res = await apiPost('/refresh-token', {});
+    accessToken = res.accessToken; // refreshToken is now in cookie
+    return res;
+  },
 
-  /** Signs out the current user. */
+  getCurrentUser: async () => {
+    try {
+      return await apiGet('/me', true);
+    } catch (err) {
+      if (err instanceof Error && (err.message.includes('401') || err.message.includes('Invalid')) ) {
+        await authService.refreshToken();
+        return apiGet('/me', true);
+      }
+      throw err;
+    }
+  },
+
   logout: async () => {
-    const user = auth.currentUser();
-    if (user) await user.logout();
+    await apiPost('/logout', {});
+    accessToken = null;
+    return;
   },
-
-  /**
-   * Confirms a user's email after they click the confirmation link.
-   * Call this on app load if the URL contains #confirmation_token=...
-   */
-  confirm: async (token: string) => auth.confirm(token, true),
-
-  /**
-   * Sends a password-reset email.
-   */
-  requestPasswordRecovery: async (email: string) =>
-    auth.requestPasswordRecovery(email),
 };
+
+export type { SignupPayload, SigninPayload };
 
 export default authService;
