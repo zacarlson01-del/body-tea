@@ -1,21 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { SignupForm } from '../components/SignupForm';
 import { SigninForm } from '../components/SigninForm';
-import { useAuthStore } from '../stores/authStore';
-import { useNavigate } from 'react-router-dom';
-
-type AuthMode = 'signin' | 'signup';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const AuthPage: React.FC = () => {
-  const [mode, setMode] = useState<AuthMode>('signin');
-  const { isAuthenticated } = useAuthStore();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
+  const mode = pathname === '/signup' ? 'signup' : 'signin';
 
-  useEffect(() => {
-    if (isAuthenticated) navigate('/dashboard');
-  }, [isAuthenticated, navigate]);
-
-  const handleAuthSuccess = () => navigate('/dashboard');
+  const handleSigninSuccess = () => navigate('/dashboard', { replace: true });
+  const handleSignupSuccess = () => navigate('/signin', { replace: true });
 
   /* ── Sign Up page ─────────────────────────────────────────── */
   if (mode === 'signup') {
@@ -26,8 +20,8 @@ export const AuthPage: React.FC = () => {
             Create Your ISEA Account
           </h2>
           <SignupForm
-            onSubmitSuccess={handleAuthSuccess}
-            onSwitchToSignin={() => setMode('signin')}
+            onSubmitSuccess={handleSignupSuccess}
+            onSwitchToSignin={() => navigate('/signin')}
           />
         </div>
       </div>
@@ -70,8 +64,8 @@ export const AuthPage: React.FC = () => {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6 sm:p-8">
         <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">Sign in</h2>
         <SigninForm
-          onSubmitSuccess={handleAuthSuccess}
-          onSwitchToSignup={() => setMode('signup')}
+          onSubmitSuccess={handleSigninSuccess}
+          onSwitchToSignup={() => navigate('/signup')}
           onForgotPassword={() => { /* TODO: password recovery */ }}
         />
       </div>

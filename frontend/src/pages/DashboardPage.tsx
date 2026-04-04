@@ -25,7 +25,20 @@ export const DashboardPage: React.FC = () => {
 
   const accountId = escrowAccount?.account_id ?? '—';
   const status = escrowAccount?.account_status ?? 'pending';
-  const depositAmount = escrowAccount?.escrow_deposit_amount ?? 0;
+  const rawDepositAmount = escrowAccount?.escrow_deposit_amount;
+  const depositAmount = typeof rawDepositAmount === 'number'
+    ? rawDepositAmount
+    : Number(rawDepositAmount || 0);
+  const detailPairs = [
+    { label: 'Email', value: user?.email || '—' },
+    { label: 'Phone', value: user?.phone || '—' },
+    { label: 'Gender', value: user?.gender || '—' },
+    { label: 'Date of Birth', value: user?.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString('en-US') : '—' },
+    { label: 'Affiliated Authorities', value: user?.affiliated_authorities || '—' },
+    { label: 'Postal Code', value: user?.postal_code || '—' },
+    { label: 'Duration (Days)', value: escrowAccount?.duration_days != null ? String(escrowAccount.duration_days) : '—' },
+    { label: 'Personal Item', value: escrowAccount?.personal_item || '—' },
+  ];
 
   return (
     <div className="flex min-h-screen" style={{ background: 'linear-gradient(135deg, #0d1b2a 0%, #0d2137 40%, #0a2e38 100%)' }}>
@@ -170,24 +183,20 @@ export const DashboardPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Security & Compliance */}
+          {/* Profile Details */}
           <div className="lg:col-span-1 rounded-2xl p-6"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
 
             <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Security & Compliance</span>
-              <span className="text-xs text-gray-400">Protection</span>
+              <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Profile Details</span>
+              <span className="text-xs text-gray-400">Submitted</span>
             </div>
 
             <div className="space-y-4">
-              {[
-                { label: 'Encryption', value: 'Active', color: 'text-white' },
-                { label: 'Compliance', value: 'Under Review', color: 'text-white' },
-                { label: 'Two-Factor Auth', value: 'Enabled', color: 'text-white' },
-              ].map(({ label, value, color }) => (
+              {detailPairs.map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between border-b border-white/5 pb-3">
                   <span className="text-gray-400 text-sm">{label}</span>
-                  <span className={`text-sm font-bold ${color}`}>{value}</span>
+                  <span className="text-sm font-bold text-white text-right max-w-[55%] truncate" title={value}>{value}</span>
                 </div>
               ))}
             </div>

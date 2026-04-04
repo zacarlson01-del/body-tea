@@ -19,14 +19,20 @@ type SigninPayload = {
   password: string;
 };
 
-const API_BASE = '/api/auth';
+const API_BASE = process.env.REACT_APP_API_URL || '/api/auth';
+
+const netlifyFunctionRoutes: Record<string, string> = {
+  '/signup': '/.netlify/functions/auth-signup',
+  '/signin': '/.netlify/functions/auth-signin',
+  '/refresh-token': '/.netlify/functions/auth-refresh-token',
+  '/me': '/.netlify/functions/auth-me',
+  '/logout': '/.netlify/functions/auth-logout',
+};
 
 let accessToken: string | null = null;
-let refreshToken: string | null = null;
 
 function buildHeaders(withAuth = false, isJson = true) {
-  const headers: Record<string, string> = {
-  };
+  const headers: Record<string, string> = {};
   if (isJson) {
     headers['Content-Type'] = 'application/json';
   }
@@ -39,60 +45,88 @@ function buildHeaders(withAuth = false, isJson = true) {
 async function handleResponse(response: Response) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.error || 'API request failed');
+    const validationMessage = Array.isArray(body.errors) && body.errors.length > 0
+      ? body.errors[0]?.msg || body.errors[0]?.message
+      : null;
+    throw new Error(
+      validationMessage ||
+      body.error ||
+      body.message ||
+      `Request failed (${response.status})`,
+    );
   }
   return body;
 }
 
+function getPrimaryUrl(path: string) {
+  return `${API_BASE}${path}`;
+}
+
+function getNetlifyFallbackUrl(path: string) {
+  return netlifyFunctionRoutes[path] || null;
+}
+
+async function requestWithFallback(
+  method: 'POST' | 'GET',
+  path: string,
+  body?: BodyInit,
+  auth = false,
+  isJson = true,
+) {
+  const primaryUrl = getPrimaryUrl(path);
+  const fallbackUrl = getNetlifyFallbackUrl(path);
+
+  const requestInit: RequestInit = {
+    method,
+    headers: buildHeaders(auth, isJson),
+    credentials: 'include',
+  };
+
+  if (body !== undefined) {
+    requestInit.body = body;
+  }
+
+  const response = await fetch(primaryUrl, requestInit);
+
+  // Some Netlify setups can return 403 on /api/auth redirects.
+  // If that happens, retry directly against the serverless function route.
+  if (response.status === 403 && fallbackUrl && fallbackUrl !== primaryUrl) {
+    const fallbackResponse = await fetch(fallbackUrl, requestInit);
+    return handleResponse(fallbackResponse);
+  }
+
+  return handleResponse(response);
+}
+
 async function apiPost(path: string, data: FormData | Record<string, unknown>, auth = false, isJson = true) {
   const body: BodyInit = isJson ? JSON.stringify(data) : (data as FormData);
-  return handleResponse(
-    await fetch(`${API_BASE}${path}`, {
-      method: 'POST',
-      headers: buildHeaders(auth, isJson),
-      credentials: 'include',
-      body,
-    }),
-  );
+  try {
+    return await requestWithFallback('POST', path, body, auth, isJson);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Cannot reach API server');
+  }
 }
 
 async function apiGet(path: string, auth = false) {
-  return handleResponse(
-    await fetch(`${API_BASE}${path}`, {
-      method: 'GET',
-      headers: buildHeaders(auth),
-      credentials: 'include',
-    }),
-  );
-}
-
-function setTokens(tokens: { accessToken: string; refreshToken: string }) {
-  accessToken = tokens.accessToken;
-  refreshToken = tokens.refreshToken;
-  return tokens;
+  try {
+    return await requestWithFallback('GET', path, undefined, auth);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Cannot reach API server');
+  }
 }
 
 export const authService = {
   signup: async (payload: SignupPayload) => {
-    const hasProfilePicture = payload.profile_picture instanceof File;
-    const body = hasProfilePicture
-      ? (() => {
-          const formData = new FormData();
-          Object.entries(payload).forEach(([key, value]) => {
-            if (value === undefined || value === null) {
-              return;
-            }
-            if (key === 'profile_picture' && value instanceof File) {
-              formData.append(key, value);
-              return;
-            }
-            formData.append(key, String(value));
-          });
-          return formData;
-        })()
-      : payload;
-
-    const res = await apiPost('/signup', body, false, !hasProfilePicture);
+    // Current Netlify auth functions accept JSON payloads.
+    // Omit file uploads here until multipart upload is implemented in functions.
+    const { profile_picture, ...jsonPayload } = payload;
+    const res = await apiPost('/signup', jsonPayload);
     accessToken = res.accessToken; // refreshToken is now in cookie
     return res;
   },

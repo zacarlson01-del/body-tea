@@ -25,7 +25,8 @@ exports.handler = async (event) => {
 
     const userResult = await query(
       `SELECT u.id, u.email, u.username, u.first_name, u.last_name, u.profile_picture_url,
-              e.account_id, e.account_status, e.escrow_deposit_amount, e.duration_days
+              u.phone, u.gender, u.date_of_birth, u.affiliated_authorities, u.postal_code,
+              e.account_id, e.account_status, e.escrow_deposit_amount, e.duration_days, e.personal_item
        FROM users u
        LEFT JOIN escrow_accounts e ON e.user_id = u.id
        WHERE u.id = $1`,
@@ -46,12 +47,18 @@ exports.handler = async (event) => {
         first_name: row.first_name,
         last_name: row.last_name,
         profile_picture_url: row.profile_picture_url,
+        phone: row.phone,
+        gender: row.gender,
+        date_of_birth: row.date_of_birth,
+        affiliated_authorities: row.affiliated_authorities,
+        postal_code: row.postal_code,
       },
       escrow_account: {
         account_id: row.account_id,
         account_status: row.account_status,
         escrow_deposit_amount: row.escrow_deposit_amount,
         duration_days: row.duration_days,
+        personal_item: row.personal_item,
       },
     });
   } catch (error) {

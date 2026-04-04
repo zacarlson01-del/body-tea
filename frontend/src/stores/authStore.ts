@@ -7,6 +7,11 @@ export interface User {
   first_name: string;
   last_name: string;
   profile_picture_url?: string;
+  phone?: string;
+  gender?: string;
+  date_of_birth?: string;
+  affiliated_authorities?: string;
+  postal_code?: string;
 }
 
 export interface EscrowAccount {
@@ -14,6 +19,7 @@ export interface EscrowAccount {
   account_status: string;
   escrow_deposit_amount?: number;
   duration_days?: number;
+  personal_item?: string;
 }
 
 interface AuthStore {
@@ -21,6 +27,7 @@ interface AuthStore {
   escrowAccount: EscrowAccount | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasCheckedAuth: boolean;
   error: string | null;
   signupSuccess: boolean;
 
@@ -37,6 +44,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   escrowAccount: null,
   isAuthenticated: false,
   isLoading: false,
+  hasCheckedAuth: false,
   error: null,
   signupSuccess: false,
 
@@ -61,17 +69,25 @@ export const useAuthStore = create<AuthStore>((set) => ({
         escrowAccount: res.escrow_account || null,
         isAuthenticated: true,
         isLoading: false,
+        hasCheckedAuth: true,
       });
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Invalid credentials';
-      set({ error: msg, isLoading: false });
+      set({ error: msg, isLoading: false, hasCheckedAuth: true });
       throw error;
     }
   },
 
   logout: async () => {
     await authService.logout();
-    set({ user: null, escrowAccount: null, isAuthenticated: false, error: null });
+    set({
+      user: null,
+      escrowAccount: null,
+      isAuthenticated: false,
+      error: null,
+      signupSuccess: false,
+      hasCheckedAuth: true,
+    });
   },
 
   getCurrentUser: async () => {
@@ -83,9 +99,16 @@ export const useAuthStore = create<AuthStore>((set) => ({
         escrowAccount: res.escrow_account || null,
         isAuthenticated: true,
         isLoading: false,
+        hasCheckedAuth: true,
       });
     } catch (error: unknown) {
-      set({ user: null, escrowAccount: null, isAuthenticated: false, isLoading: false });
+      set({
+        user: null,
+        escrowAccount: null,
+        isAuthenticated: false,
+        isLoading: false,
+        hasCheckedAuth: true,
+      });
     }
   },
 

@@ -21,6 +21,9 @@ exports.handler = async (event) => {
       date_of_birth,
       affiliated_authorities,
       postal_code,
+      escrow_deposit_amount,
+      duration_days,
+      personal_item,
     } = payload;
 
     if (!email || !first_name || !last_name || !password) {
@@ -63,9 +66,16 @@ exports.handler = async (event) => {
 
     const accountId = `ISEA-${Math.random().toString(16).slice(2, 6).toUpperCase()}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
     await query(
-      `INSERT INTO escrow_accounts (user_id, account_id, status, account_status)
-       VALUES ($1, $2, 'pending', 'pending')`,
-      [user.id, accountId]
+      `INSERT INTO escrow_accounts
+       (user_id, account_id, escrow_deposit_amount, duration_days, personal_item, status, account_status)
+       VALUES ($1, $2, $3, $4, $5, 'pending', 'pending')`,
+      [
+        user.id,
+        accountId,
+        escrow_deposit_amount || null,
+        duration_days || null,
+        personal_item || null,
+      ]
     );
 
     const { accessToken, refreshToken } = {

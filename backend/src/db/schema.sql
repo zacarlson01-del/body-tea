@@ -1,6 +1,9 @@
 -- ISEA User Authentication Database Schema
 -- PostgreSQL
 
+-- Required for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,9 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified BOOLEAN DEFAULT FALSE,
   two_factor_enabled BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_email (email),
-  INDEX idx_username (username)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Escrow accounts table
@@ -37,9 +38,7 @@ CREATE TABLE IF NOT EXISTS escrow_accounts (
   status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'active', 'completed'
   account_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'identity_submitted', 'compliance_review', 'activated'
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_id (user_id),
-  INDEX idx_account_id (account_id)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Profile pictures backup table (for versioning)
@@ -51,8 +50,7 @@ CREATE TABLE IF NOT EXISTS profile_pictures (
   file_size INT,
   file_type VARCHAR(50),
   is_current BOOLEAN DEFAULT TRUE,
-  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_id (user_id)
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- JWT tokens for invalidation/refresh tracking
@@ -63,9 +61,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   expires_at TIMESTAMP NOT NULL,
   used_at TIMESTAMP,
   revoked_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_id (user_id),
-  INDEX idx_expires_at (expires_at)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Audit log for security tracking
@@ -77,12 +73,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   user_agent TEXT,
   status VARCHAR(50),
   details JSONB,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_id (user_id),
-  INDEX idx_created_at (created_at)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_escrow_accounts_user_id ON escrow_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_account_id ON escrow_accounts(account_id);
+CREATE INDEX IF NOT EXISTS idx_profile_pictures_user_id ON profile_pictures(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_escrow_user_status ON escrow_accounts(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);

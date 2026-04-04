@@ -1,14 +1,40 @@
 [build]
-  base = "frontend"
-  publish = "build"
-  command = "npm run build"
+  publish = "frontend/build"
+  command = "npm --prefix frontend run build"
 
 [build.environment]
   NODE_VERSION = "18"
 
+[functions]
+  directory = "netlify/functions"
+
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api/auth/signup"
+  to = "/.netlify/functions/auth-signup"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/signin"
+  to = "/.netlify/functions/auth-signin"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/refresh-token"
+  to = "/.netlify/functions/auth-refresh-token"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/me"
+  to = "/.netlify/functions/auth-me"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/logout"
+  to = "/.netlify/functions/auth-logout"
   status = 200
   force = true
 
