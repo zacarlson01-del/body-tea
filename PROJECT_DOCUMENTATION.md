@@ -59,7 +59,7 @@
            │
 ┌─────────────────────────────────────────────────────────┐
 │  Netlify Dashboard                                      │
-│  └─ Admin manages users, views data, edits records     │
+│  └─ Admin manages users, views data, edits records      │
 └─────────────────────────────────────────────────────────┘
 ```
 
