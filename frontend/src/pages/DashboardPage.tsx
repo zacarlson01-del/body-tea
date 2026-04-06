@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
 export const DashboardPage: React.FC = () => {
   const { user, escrowAccount, isLoading, getCurrentUser, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'security' | 'transactions'>('dashboard');
+  const [pendingHourglass, setPendingHourglass] = useState<'⏳' | '⌛'>('⏳');
 
   useEffect(() => {
     getCurrentUser();
@@ -14,14 +17,6 @@ export const DashboardPage: React.FC = () => {
     await logout();
     navigate('/signin');
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-purple-400" />
-      </div>
-    );
-  }
 
   // ──────────────────────────────────────────────────────────────────────
   // ─ SECTION 1: HELPER CONSTANTS & DERIVATIONS ─────────────────────────
@@ -42,6 +37,17 @@ export const DashboardPage: React.FC = () => {
   const depositAmount = typeof rawDepositAmount === 'number'
     ? rawDepositAmount
     : Number(rawDepositAmount || 0);
+
+  useEffect(() => {
+    if (status !== 'pending') {
+      setPendingHourglass('⏳');
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setPendingHourglass(prev => (prev === '⏳' ? '⌛' : '⏳'));
+    }, 800);
+    return () => window.clearInterval(timer);
+  }, [status]);
 
   // Verification step derivation
   type VerificationStep = 1 | 2 | 3;
@@ -68,19 +74,35 @@ export const DashboardPage: React.FC = () => {
 
   const stepStatusLine = STEP_STATUS_LINE[status] ?? 'Verification is in progress.';
   const estimatedCompletion = status === 'pending' ? 'Est. completion: 3–5 business days' : null;
+  const statusUpdatedAt = new Date().toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
-  // Avatar & Initials
-  const avatarUrl = user?.profile_picture_url?.trim() || null;
+  const primaryAction = status === 'pending'
+    ? {
+        title: 'Complete Verification',
+        description: 'Your account is under compliance review. Check your submitted details and contact support if you need to update anything.',
+        cta: 'Review Profile Details',
+        onClick: () => setIsProfileOpen(true),
+      }
+    : {
+        title: 'Account Is Active',
+        description: 'Your verification is complete. You can now monitor account activity and statements.',
+        cta: 'Download Statement',
+        onClick: () => {},
+      };
 
-  const initials: string = [user?.first_name, user?.last_name]
-    .filter((s): s is string => typeof s === 'string' && s.length > 0)
-    .map(s => s[0].toUpperCase())
-    .join('') || '?';
-
-  // Full name
   const fullName = [user?.first_name, user?.last_name]
     .filter((s): s is string => typeof s === 'string' && s.length > 0)
     .join(' ') || 'Member';
+  const avatarUrl = user?.profile_picture_url?.trim() || null;
+  const initials = [user?.first_name, user?.last_name]
+    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+    .map(s => s[0].toUpperCase())
+    .join('') || '?';
 
   const detailPairs = [
     { label: 'Email', value: user?.email || '—' },
@@ -93,27 +115,13 @@ export const DashboardPage: React.FC = () => {
     { label: 'Personal Item', value: escrowAccount?.personal_item || '—' },
   ];
 
-  // ──────────────────────────────────────────────────────────────────────
-  // ─ SECTION 2: AVATAR NODE INNER COMPONENT ────────────────────────────
-  // ──────────────────────────────────────────────────────────────────────
-
-  const AvatarNode: React.FC<{ size: 'sm' | 'md' }> = ({ size }) => {
-    const dim = size === 'md' ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs';
-    return avatarUrl ? (
-      <img
-        src={avatarUrl}
-        alt={`${user?.first_name ?? ''} avatar`}
-        className={`${dim} rounded-full object-cover border border-white/20 flex-shrink-0`}
-        onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-          e.currentTarget.style.display = 'none';
-        }}
-      />
-    ) : (
-      <div className={`${dim} rounded-full bg-purple-700/60 border border-purple-400/40 flex items-center justify-center font-semibold text-purple-100 flex-shrink-0`}>
-        {initials}
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-purple-400" />
       </div>
     );
-  };
+  }
 
   return (
     <div className="flex min-h-screen" style={{ background: 'linear-gradient(135deg, #0d1b2a 0%, #0d2137 40%, #0a2e38 100%)' }}>
@@ -155,20 +163,72 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* User Identity Block */}
-        <div className="flex items-center gap-3 mb-8 px-1">
-          <AvatarNode size="md" />
+        <button
+          type="button"
+          onClick={() => setIsProfileOpen(true)}
+          aria-label="Open profile details"
+          className="w-full flex items-center gap-3 mb-8 px-2 py-2 rounded-lg border border-white/10 hover:bg-white/10 transition-colors text-left"
+        >
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={`${fullName} avatar`}
+              className="w-10 h-10 rounded-full object-cover border border-white/20 flex-shrink-0"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-purple-700/60 border border-purple-400/40 flex items-center justify-center font-semibold text-purple-100 text-sm flex-shrink-0">
+              {initials}
+            </div>
+          )}
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white truncate">{fullName}</p>
-            <p className="text-xs text-gray-400 truncate">{user?.email ?? ''}</p>
           </div>
-        </div>
+        </button>
 
         {/* Nav */}
         <nav className="flex-1 space-y-2">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-600/80 cursor-pointer">
+          <button
+            type="button"
+            onClick={() => setActiveTab('dashboard')}
+            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+            className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+              activeTab === 'dashboard'
+                ? 'bg-blue-600/80 border-blue-400/40 text-white'
+                : 'border-white/10 text-gray-300 hover:bg-white/10'
+            }`}
+          >
             <span className="w-2 h-2 rounded-full bg-blue-300" />
             <span className="text-white text-sm font-medium">Dashboard</span>
-          </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('security')}
+            aria-current={activeTab === 'security' ? 'page' : undefined}
+            className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+              activeTab === 'security'
+                ? 'bg-yellow-700/40 border-yellow-400/40 text-white'
+                : 'border-white/10 text-gray-300 hover:bg-white/10'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-yellow-300/80" />
+            <span className="text-sm font-medium">Security &amp; Compliance</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('transactions')}
+            aria-current={activeTab === 'transactions' ? 'page' : undefined}
+            className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+              activeTab === 'transactions'
+                ? 'bg-cyan-700/50 border-cyan-400/40 text-white'
+                : 'border-white/10 text-gray-300 hover:bg-white/10'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-cyan-300/80" />
+            <span className="text-sm font-medium">Transactions</span>
+          </button>
         </nav>
 
         {/* Logout */}
@@ -186,13 +246,10 @@ export const DashboardPage: React.FC = () => {
       <main id="main-content" className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto pb-20 md:pb-0">
 
         {/* Header row */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+        <div className="mb-4">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <AvatarNode size="sm" />
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Welcome, {fullName}
-              </h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Welcome</h1>
             </div>
             <div className="flex flex-wrap gap-1 sm:gap-2">
               {['ISEA Member Portal', 'Secure', 'Confidential', 'Compliant'].map(tag => (
@@ -205,20 +262,32 @@ export const DashboardPage: React.FC = () => {
               ))}
             </div>
           </div>
-          <button
-            aria-label="Download account statement as PDF"
-            className="px-4 py-2 rounded-full text-sm font-medium text-white border border-white/20 hover:bg-white/10 transition-colors"
-          >
-            Download Statement
-          </button>
         </div>
 
-        {/* ── Card grid ──────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 mt-6">
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Primary Action */}
+            <section
+              className="rounded-2xl p-5 sm:p-6 mb-5 border border-blue-400/25"
+              style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.18), rgba(109,40,217,0.12))' }}
+            >
+              <p className="text-xs font-semibold tracking-widest text-blue-200 uppercase mb-2">Recommended Next Step</p>
+              <h2 className="text-xl sm:text-2xl font-semibold text-white">{primaryAction.title}</h2>
+              <p className="text-sm text-blue-100/90 mt-2 max-w-3xl">{primaryAction.description}</p>
+              <button
+                onClick={primaryAction.onClick}
+                className="mt-4 px-4 py-2.5 rounded-lg text-sm font-semibold text-white border border-white/25 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 transition-colors"
+              >
+                {primaryAction.cta}
+              </button>
+            </section>
+
+            {/* ── Card grid ──────────────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 mt-6">
 
           {/* Account Overview — spans 2 cols */}
           <div
-            className="lg:col-span-2 rounded-2xl p-6"
+            className="lg:col-span-3 rounded-2xl p-6"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
 
@@ -227,9 +296,13 @@ export const DashboardPage: React.FC = () => {
               <span
                 role="status"
                 aria-label={`Account status: ${statusInfo.label}`}
-                className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 flex items-center gap-1.5"
+                className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
+                  status === 'pending'
+                    ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30 animate-pulse'
+                    : 'bg-green-500/20 text-green-300 border-green-500/30'
+                }`}
               >
-                <span aria-hidden="true">{statusInfo.icon}</span>
+                <span aria-hidden="true">{status === 'pending' ? pendingHourglass : statusInfo.icon}</span>
                 {statusInfo.label}
               </span>
             </div>
@@ -242,15 +315,10 @@ export const DashboardPage: React.FC = () => {
               <p className="text-xs text-gray-400 mb-3">
                 Funds held in escrow — released upon completion of verification.
               </p>
-              <div className="flex items-end justify-between">
+              <div className="flex items-end">
                 <p className="text-3xl font-bold text-white">
                   ${depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
-                {/* Chart placeholder */}
-                <div
-                  className="w-32 h-20 rounded-lg border-2 border-blue-500/50"
-                  style={{ background: 'rgba(59,130,246,0.05)' }}
-                />
               </div>
             </div>
 
@@ -316,7 +384,8 @@ export const DashboardPage: React.FC = () => {
               </span>
             </div>
 
-            <p className="text-xs text-gray-400 mb-5">{stepStatusLine}</p>
+            <p className="text-xs text-gray-400 mb-2">{stepStatusLine}</p>
+            <p className="text-xs text-blue-200/80 mb-5">Last updated: {statusUpdatedAt}</p>
 
             {/* Step Indicators */}
             <div
@@ -364,6 +433,9 @@ export const DashboardPage: React.FC = () => {
                     {/* Right column: label */}
                     <div className="pt-1 pb-4">
                       <span className={`text-sm ${labelClass}`}>{label}</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {isDone ? 'Completed' : isCurrent ? 'In progress' : 'Pending'}
+                      </p>
                     </div>
                   </div>
                 );
@@ -378,41 +450,53 @@ export const DashboardPage: React.FC = () => {
             )}
           </div>
 
-          {/* Profile Details */}
-          <div
-            className="lg:col-span-1 rounded-2xl p-6"
+            </div>
+          </>
+        )}
+
+        {activeTab === 'transactions' && (
+          <section
+            className="rounded-2xl p-6 mt-6"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
-
             <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-semibold tracking-widest text-gray-300 uppercase">Profile Details</span>
-              <span className="text-xs text-gray-400">Submitted</span>
+              <span className="text-xs font-semibold tracking-widest text-gray-300 uppercase">Transaction History</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">Latest</span>
+                <button
+                  aria-label="Download account statement as PDF"
+                  className="px-3 py-1.5 rounded-full text-xs font-medium text-white border border-white/20 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-colors"
+                >
+                  Download Statement
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {detailPairs.map(({ label, value }) => (
-                <div
-                  key={label}
-                  className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-white/5 pb-3 gap-0.5 md:gap-0"
-                >
-                  <span className="text-gray-300 text-xs uppercase tracking-wide">{label}</span>
-                  <span
-                    className="text-sm font-semibold text-white md:text-right md:max-w-[55%]"
-                    title={value}
-                  >
-                    {value}
-                  </span>
-                </div>
+            <div className="grid grid-cols-5 gap-2 text-xs font-semibold text-gray-300 uppercase mb-3 px-2">
+              {['Date', 'Reference', 'Description', 'Amount', 'Status'].map(h => (
+                <span key={h}>{h}</span>
               ))}
             </div>
-          </div>
 
-          {/* Security & Compliance — NEW CARD */}
-          <div
-            className="rounded-2xl p-6"
+            <div className="rounded-xl border border-dashed border-white/10 flex items-center justify-center py-8">
+              <div className="text-center px-4">
+                <p className="text-gray-300 text-sm font-medium">No transactions available yet</p>
+                <p className="text-gray-500 text-xs mt-1">Transactions will appear here after account activation and activity.</p>
+                <button
+                  className="mt-3 px-3 py-1.5 rounded-lg text-xs font-semibold text-white border border-white/20 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-colors"
+                >
+                  Learn How Activity Appears
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'security' && (
+          <section
+            className="rounded-2xl p-6 mt-6"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
-
             <div className="flex items-center justify-between mb-5">
               <span className="text-xs font-semibold tracking-widest text-gray-300 uppercase">
                 Security &amp; Compliance
@@ -443,32 +527,8 @@ export const DashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Transaction History */}
-          <div
-            className="lg:col-span-2 rounded-2xl p-6"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-          >
-
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-semibold tracking-widest text-gray-300 uppercase">Transaction History</span>
-              <span className="text-xs text-gray-400">Latest</span>
-            </div>
-
-            {/* Table header */}
-            <div className="grid grid-cols-5 gap-2 text-xs font-semibold text-gray-300 uppercase mb-3 px-2">
-              {['Date', 'Reference', 'Description', 'Amount', 'Status'].map(h => (
-                <span key={h}>{h}</span>
-              ))}
-            </div>
-
-            <div className="rounded-xl border border-dashed border-white/10 flex items-center justify-center py-8">
-              <p className="text-gray-400 text-sm">No transactions available</p>
-            </div>
-          </div>
-
-        </div>
+          </section>
+        )}
       </main>
 
       {/* ── Mobile Bottom Navigation Bar ────────────────────────────────────────────── */}
@@ -545,6 +605,45 @@ export const DashboardPage: React.FC = () => {
           <span className="text-xs">Logout</span>
         </button>
       </nav>
+
+      {/* ── Profile Drawer ─────────────────────────────────────────── */}
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close profile drawer"
+            onClick={() => setIsProfileOpen(false)}
+            className="absolute inset-0 bg-black/50"
+          />
+          <aside
+            aria-label="Profile details panel"
+            className="absolute right-0 top-0 h-full w-full sm:w-[26rem] p-5 sm:p-6 overflow-y-auto"
+            style={{ background: 'linear-gradient(180deg, rgba(12,24,42,0.98), rgba(8,34,48,0.98))', borderLeft: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            <div className="sticky top-0 z-10 pb-4 mb-4 flex items-center justify-between border-b border-white/10 bg-transparent">
+              <h2 className="text-white text-lg font-semibold">Profile Details</h2>
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(false)}
+                aria-label="Close profile details"
+                className="p-2 rounded-md border border-white/20 text-gray-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              {detailPairs.map(({ label, value }) => (
+                <div key={label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+                  <p className="text-gray-400 text-xs uppercase tracking-wide">{label}</p>
+                  <p className="text-white text-sm mt-1 break-words">{value}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* ── Contact Support Floating Action Button ─────────────────────────────────────────── */}
       <button
