@@ -22,9 +22,19 @@ export interface EscrowAccount {
   personal_item?: string;
 }
 
+export interface Transaction {
+  reference: string;
+  description: string;
+  amount: number | string;
+  nxt_amount?: number | string | null;
+  release_condition?: string | null;
+  transaction_date: string;
+}
+
 interface AuthStore {
   user: User | null;
   escrowAccount: EscrowAccount | null;
+  transactions: Transaction[];
   isAuthenticated: boolean;
   isLoading: boolean;
   hasCheckedAuth: boolean;
@@ -42,6 +52,7 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   escrowAccount: null,
+  transactions: [],
   isAuthenticated: false,
   isLoading: false,
   hasCheckedAuth: false,
@@ -67,6 +78,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({
         user: res.user,
         escrowAccount: res.escrow_account || null,
+        transactions: res.transactions || [],
         isAuthenticated: true,
         isLoading: false,
         hasCheckedAuth: true,
@@ -83,6 +95,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({
       user: null,
       escrowAccount: null,
+      transactions: [],
       isAuthenticated: false,
       error: null,
       signupSuccess: false,
@@ -97,6 +110,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({
         user: res.user,
         escrowAccount: res.escrow_account || null,
+        transactions: res.transactions || [],
         isAuthenticated: true,
         isLoading: false,
         hasCheckedAuth: true,
@@ -105,6 +119,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({
         user: null,
         escrowAccount: null,
+        transactions: [],
         isAuthenticated: false,
         isLoading: false,
         hasCheckedAuth: true,

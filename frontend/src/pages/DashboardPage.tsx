@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { authService } from '../services/apiClient';
 
 export const DashboardPage: React.FC = () => {
-  const { user, escrowAccount, isLoading, getCurrentUser, logout } = useAuthStore();
+  const { user, escrowAccount, transactions, isLoading, getCurrentUser, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'security' | 'transactions'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'security' | 'transactions' | 'support'>('dashboard');
   const [pendingHourglass, setPendingHourglass] = useState<'⏳' | '⌛'>('⏳');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [isSupportSubmitting, setIsSupportSubmitting] = useState(false);
+  const [supportStatus, setSupportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [supportError, setSupportError] = useState('');
 
   useEffect(() => {
     getCurrentUser();
@@ -24,7 +29,7 @@ export const DashboardPage: React.FC = () => {
 
   // Account status mapping
   const STATUS_LABEL_MAP: Record<string, { label: string; icon: string }> = {
-    pending: { label: 'Awaiting Compliance Review', icon: '⏳' },
+    pending: { label: 'Pending', icon: '⏳' },
     active: { label: 'Account Active', icon: '✓' },
     completed: { label: 'Completed', icon: '✓' },
   };
@@ -32,11 +37,18 @@ export const DashboardPage: React.FC = () => {
   const accountId = escrowAccount?.account_id ?? '—';
   const status = escrowAccount?.account_status ?? 'pending';
   const statusInfo = STATUS_LABEL_MAP[status] ?? { label: status, icon: '●' };
+  const latestTransaction = transactions.length > 0 ? transactions[0] : null;
 
   const rawDepositAmount = escrowAccount?.escrow_deposit_amount;
   const depositAmount = typeof rawDepositAmount === 'number'
     ? rawDepositAmount
     : Number(rawDepositAmount || 0);
+  const rawNxtAmount = latestTransaction?.nxt_amount;
+  const nxtAmount = typeof rawNxtAmount === 'number'
+    ? rawNxtAmount
+    : Number(rawNxtAmount || 0);
+  const releaseAmountLabel = `$${nxtAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  const releaseConditionDisplay = `${releaseAmountLabel} - Compliance`;
 
   useEffect(() => {
     if (status !== 'pending') {
@@ -90,14 +102,16 @@ export const DashboardPage: React.FC = () => {
       }
     : {
         title: 'Account Is Active',
-        description: 'Your verification is complete. You can now monitor account activity and statements.',
-        cta: 'Download Statement',
-        onClick: () => {},
+        description: 'Your verification is complete. You can now monitor account activity in this demo environment.',
+        cta: 'View Account Activity',
+        onClick: () => setActiveTab('transactions'),
       };
 
   const fullName = [user?.first_name, user?.last_name]
     .filter((s): s is string => typeof s === 'string' && s.length > 0)
     .join(' ') || 'Member';
+  const supportName = fullName !== 'Member' ? fullName : 'Account Holder';
+  const supportEmail = user?.email?.trim() || '';
   const avatarUrl = user?.profile_picture_url?.trim() || null;
   const initials = [user?.first_name, user?.last_name]
     .filter((s): s is string => typeof s === 'string' && s.length > 0)
@@ -114,6 +128,28 @@ export const DashboardPage: React.FC = () => {
     { label: 'Duration (Days)', value: escrowAccount?.duration_days != null ? String(escrowAccount.duration_days) : '—' },
     { label: 'Personal Item', value: escrowAccount?.personal_item || '—' },
   ];
+
+  const handleSupportSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSupportStatus('idle');
+    setSupportError('');
+
+    try {
+      setIsSupportSubmitting(true);
+      await authService.createSupportMessage({
+        name: supportName,
+        email: supportEmail,
+        message: supportMessage,
+      });
+      setSupportStatus('success');
+      setSupportMessage('');
+    } catch (error) {
+      setSupportStatus('error');
+      setSupportError(error instanceof Error ? error.message : 'Failed to submit support request');
+    } finally {
+      setIsSupportSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -229,17 +265,21 @@ export const DashboardPage: React.FC = () => {
             <span className="w-2 h-2 rounded-full bg-cyan-300/80" />
             <span className="text-sm font-medium">Transactions</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('support')}
+            aria-current={activeTab === 'support' ? 'page' : undefined}
+            className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+              activeTab === 'support'
+                ? 'bg-emerald-700/50 border-emerald-400/40 text-white'
+                : 'border-white/10 text-gray-300 hover:bg-white/10'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-300/80" />
+            <span className="text-sm font-medium">Support</span>
+          </button>
         </nav>
 
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          aria-label="Log out of your account"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm mt-4"
-        >
-          <span className="w-2 h-2 rounded-full bg-gray-400" />
-          Log out
-        </button>
       </aside>
 
       {/* ── Main content ─────────────────────────────────────── */}
@@ -249,10 +289,12 @@ export const DashboardPage: React.FC = () => {
         <div className="mb-4">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Welcome</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
+                Welcome, {user?.first_name || 'Member'}
+              </h1>
             </div>
             <div className="flex flex-wrap gap-1 sm:gap-2">
-              {['ISEA Member Portal', 'Secure', 'Confidential', 'Compliant'].map(tag => (
+              {['ISEA Member Portal', 'Secure', 'Confidential', 'Compliant', 'Demo Environment'].map(tag => (
                 <span
                   key={tag}
                   className="px-3 py-1 rounded-full text-xs font-medium border border-white/20 text-gray-300"
@@ -313,7 +355,7 @@ export const DashboardPage: React.FC = () => {
                 Available Balance
               </p>
               <p className="text-xs text-gray-400 mb-3">
-                Funds held in escrow — released upon completion of verification.
+                Demo balance shown for verification workflow preview.
               </p>
               <div className="flex items-end">
                 <p className="text-3xl font-bold text-white">
@@ -341,13 +383,10 @@ export const DashboardPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Release Conditions Placeholder */}
-            <div className="mt-4 rounded-xl border border-dashed border-white/15 px-4 py-3">
-              <p className="text-xs font-semibold tracking-widest text-gray-300 uppercase mb-1">
-                Release Conditions
-              </p>
-              <p className="text-xs text-gray-500 italic">
-                Release conditions will be defined once account activation is complete.
+            {/* Release Condition from escrow_accounts table */}
+            <div className="mt-4 rounded-xl border border-white/15 px-4 py-3 bg-white/5">
+              <p className="text-sm text-white font-medium">
+                {releaseConditionDisplay}
               </p>
             </div>
 
@@ -456,37 +495,70 @@ export const DashboardPage: React.FC = () => {
 
         {activeTab === 'transactions' && (
           <section
-            className="rounded-2xl p-6 mt-6"
+            className="rounded-2xl p-4 sm:p-5 mt-5"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-xs font-semibold tracking-widest text-gray-300 uppercase">Transaction History</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-400">Latest</span>
-                <button
-                  aria-label="Download account statement as PDF"
-                  className="px-3 py-1.5 rounded-full text-xs font-medium text-white border border-white/20 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-colors"
-                >
-                  Download Statement
-                </button>
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] sm:text-xs font-semibold tracking-widest text-gray-300 uppercase">Transaction History</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">Latest</span>
+                </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-5 gap-2 text-xs font-semibold text-gray-300 uppercase mb-3 px-2">
-              {['Date', 'Reference', 'Description', 'Amount', 'Status'].map(h => (
-                <span key={h}>{h}</span>
-              ))}
-            </div>
+              <div className="sm:hidden grid grid-cols-4 gap-2 text-[10px] font-semibold text-gray-300 uppercase mb-2 px-2 tracking-[0.05em]">
+                {['Date', 'Reference', 'Description', 'Amount'].map((h) => (
+                  <span key={h} className={h === 'Amount' ? 'text-right pr-1' : ''}>
+                    {h}
+                  </span>
+                ))}
+              </div>
 
-            <div className="rounded-xl border border-dashed border-white/10 flex items-center justify-center py-8">
-              <div className="text-center px-4">
-                <p className="text-gray-300 text-sm font-medium">No transactions available yet</p>
-                <p className="text-gray-500 text-xs mt-1">Transactions will appear here after account activation and activity.</p>
-                <button
-                  className="mt-3 px-3 py-1.5 rounded-lg text-xs font-semibold text-white border border-white/20 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-colors"
-                >
-                  Learn How Activity Appears
-                </button>
+              <div className="hidden sm:block overflow-x-auto pb-1">
+                <div className="min-w-[460px] grid grid-cols-[1fr_1fr_1.2fr_1fr] gap-3 text-[11px] font-semibold text-gray-300 uppercase mb-2 px-2 tracking-[0.06em]">
+                  {['Date', 'Reference', 'Description', 'Amount'].map((h) => (
+                    <span key={h} className={h === 'Amount' ? 'text-right pr-1.5' : ''}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-dashed border-white/10 flex items-center justify-center py-4 overflow-x-auto">
+                {transactions.length === 0 ? (
+                  <div className="text-center px-4">
+                    <p className="text-gray-300 text-sm font-medium">No transactions available yet</p>
+                    <p className="text-gray-500 text-xs mt-1">Transactions will appear here after account activation and activity.</p>
+                  </div>
+                ) : (
+                  <div className="w-full min-w-[460px] px-2 space-y-1.5">
+                    {transactions.map((tx) => {
+                      const amountNum = typeof tx.amount === 'number' ? tx.amount : Number(tx.amount || 0);
+                      const formattedDateDesktop = tx.transaction_date
+                        ? new Date(tx.transaction_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—';
+                      const formattedDateMobile = tx.transaction_date
+                        ? new Date(tx.transaction_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : '—';
+                      return (
+                        <React.Fragment key={`${tx.reference}-${tx.transaction_date}`}>
+                          <div className="sm:hidden grid grid-cols-4 gap-2 text-[10px] text-gray-200 px-2 py-1.5 rounded-md border border-white/10 bg-white/5">
+                            <span>{formattedDateMobile}</span>
+                            <span className="truncate">{tx.reference}</span>
+                            <span className="truncate">{tx.description}</span>
+                            <span className="text-right pr-1">${amountNum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="hidden sm:grid grid-cols-[1fr_1fr_1.2fr_1fr] gap-3 text-xs text-gray-200 px-2 py-1.5 rounded-md border border-white/10 bg-white/5">
+                            <span>{formattedDateDesktop}</span>
+                            <span className="truncate">{tx.reference}</span>
+                            <span className="truncate pr-1">{tx.description}</span>
+                            <span className="text-right pr-1.5">${amountNum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -529,6 +601,67 @@ export const DashboardPage: React.FC = () => {
             </div>
           </section>
         )}
+
+        {activeTab === 'support' && (
+          <section
+            className="rounded-2xl p-6 mt-6"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <span className="text-xs font-semibold tracking-widest text-gray-300 uppercase">
+                Support
+              </span>
+              <span className="text-xs text-emerald-300">Online</span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-white text-sm font-semibold">Need help with your escrow account?</p>
+                <p className="text-gray-300 text-sm mt-1">
+                  Our support team can help with account verification updates, deposit questions, release conditions, and dispute guidance.
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-gray-400 text-xs uppercase tracking-wide">Email</p>
+                <p className="text-white text-sm mt-1">support@isea-secure.com</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-gray-400 text-xs uppercase tracking-wide">Phone</p>
+                <p className="text-white text-sm mt-1">+1 (800) 555-0129</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-gray-400 text-xs uppercase tracking-wide">Hours</p>
+                <p className="text-white text-sm mt-1">Monday-Friday, 9:00 AM-6:00 PM (PT)</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSupportSubmit} className="mt-5 space-y-3">
+              <p className="text-xs font-semibold tracking-widest text-gray-300 uppercase">Send Message</p>
+              <textarea
+                value={supportMessage}
+                onChange={(e) => setSupportMessage(e.target.value)}
+                placeholder="How can we help you?"
+                rows={4}
+                minLength={10}
+                className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                required
+              />
+              {supportStatus === 'error' && (
+                <p className="text-red-300 text-xs">{supportError}</p>
+              )}
+              {supportStatus === 'success' && (
+                <p className="text-emerald-300 text-xs">Support request sent successfully.</p>
+              )}
+              <button
+                type="submit"
+                disabled={isSupportSubmitting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600/90 hover:bg-emerald-600 disabled:opacity-60"
+              >
+                {isSupportSubmitting ? 'Sending...' : 'Send to Support'}
+              </button>
+            </form>
+          </section>
+        )}
       </main>
 
       {/* ── Mobile Bottom Navigation Bar ────────────────────────────────────────────── */}
@@ -539,9 +672,13 @@ export const DashboardPage: React.FC = () => {
       >
         {/* Dashboard */}
         <button
+          type="button"
+          onClick={() => setActiveTab('dashboard')}
           aria-label="Dashboard"
-          aria-current="page"
-          className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-blue-300"
+          aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors ${
+            activeTab === 'dashboard' ? 'text-blue-300' : 'text-gray-400'
+          }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -554,28 +691,36 @@ export const DashboardPage: React.FC = () => {
           <span className="text-xs font-medium">Dashboard</span>
         </button>
 
-        {/* Profile */}
-        <a
-          href="#profile"
-          aria-label="Profile (coming soon)"
-          className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-gray-400"
+        {/* Transactions */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('transactions')}
+          aria-label="Transactions"
+          aria-current={activeTab === 'transactions' ? 'page' : undefined}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors ${
+            activeTab === 'transactions' ? 'text-cyan-300' : 'text-gray-400'
+          }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={1.5}
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              d="M7 8h10M7 12h8m-8 4h6M5 5h14a1 1 0 011 1v12a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"
             />
           </svg>
-          <span className="text-xs">Profile</span>
-        </a>
+          <span className="text-xs">Transactions</span>
+        </button>
 
         {/* Support */}
-        <a
-          href="#support"
-          aria-label="Support (coming soon)"
-          className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-gray-400"
+        <button
+          type="button"
+          onClick={() => setActiveTab('support')}
+          aria-label="Support"
+          aria-current={activeTab === 'support' ? 'page' : undefined}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors ${
+            activeTab === 'support' ? 'text-emerald-300' : 'text-gray-400'
+          }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -586,24 +731,29 @@ export const DashboardPage: React.FC = () => {
             />
           </svg>
           <span className="text-xs">Support</span>
-        </a>
+        </button>
 
-        {/* Logout */}
+        {/* Profile */}
         <button
-          onClick={handleLogout}
-          aria-label="Log out of your account"
-          className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-gray-400 hover:text-red-300 active:text-red-300 transition-colors"
+          type="button"
+          onClick={() => setIsProfileOpen(true)}
+          aria-label="Profile details"
+          aria-current={isProfileOpen ? 'page' : undefined}
+          className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors ${
+            isProfileOpen ? 'text-purple-300' : 'text-gray-400'
+          }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={1.5}
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             />
           </svg>
-          <span className="text-xs">Logout</span>
+          <span className="text-xs">Profile</span>
         </button>
+
       </nav>
 
       {/* ── Profile Drawer ─────────────────────────────────────────── */}
@@ -641,12 +791,24 @@ export const DashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+            <div className="mt-5 pt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label="Log out of your account"
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-red-100 border border-red-300/40 bg-red-500/20 hover:bg-red-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 transition-colors"
+              >
+                Log out
+              </button>
+            </div>
           </aside>
         </div>
       )}
 
       {/* ── Contact Support Floating Action Button ─────────────────────────────────────────── */}
       <button
+        type="button"
+        onClick={() => setActiveTab('support')}
         aria-label="Contact support for disputes or help"
         className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-30 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform"
         style={{ background: 'linear-gradient(135deg, #6d28d9, #2563eb)' }}

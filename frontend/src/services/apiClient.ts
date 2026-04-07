@@ -19,6 +19,21 @@ type SigninPayload = {
   password: string;
 };
 
+type SupportPayload = {
+  name: string;
+  email: string;
+  message: string;
+};
+
+type ForgotPasswordPayload = {
+  email: string;
+};
+
+type ResetPasswordPayload = {
+  token: string;
+  new_password: string;
+};
+
 const API_BASE = process.env.REACT_APP_API_URL || '/api/auth';
 
 const netlifyFunctionRoutes: Record<string, string> = {
@@ -27,9 +42,23 @@ const netlifyFunctionRoutes: Record<string, string> = {
   '/refresh-token': '/.netlify/functions/auth-refresh-token',
   '/me': '/.netlify/functions/auth-me',
   '/logout': '/.netlify/functions/auth-logout',
+  '/support/create': '/.netlify/functions/support-create',
+  '/forgot-password': '/.netlify/functions/auth-forgot-password',
+  '/profile-picture': '/.netlify/functions/profile-picture',
+  '/validate-reset-token': '/.netlify/functions/auth-validate-reset-token',
+  '/reset-password': '/.netlify/functions/auth-reset-password',
 };
 
 let accessToken: string | null = null;
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to read profile picture'));
+    reader.readAsDataURL(file);
+  });
+}
 
 function buildHeaders(withAuth = false, isJson = true) {
   const headers: Record<string, string> = {};
@@ -123,12 +152,27 @@ async function apiGet(path: string, auth = false) {
 
 export const authService = {
   signup: async (payload: SignupPayload) => {
-    // Current Netlify auth functions accept JSON payloads.
-    // Omit file uploads here until multipart upload is implemented in functions.
     const { profile_picture, ...jsonPayload } = payload;
-    const res = await apiPost('/signup', jsonPayload);
-    accessToken = res.accessToken; // refreshToken is now in cookie
-    return res;
+    const pictureDataUrl = profile_picture ? await fileToDataUrl(profile_picture) : undefined;
+    const signupPayload = pictureDataUrl
+      ? { ...jsonPayload, profile_picture_data_url: pictureDataUrl }
+      : jsonPayload;
+    const finalRes = await apiPost('/signup', signupPayload);
+    accessToken = finalRes.accessToken; // refreshToken is now in cookie
+    return finalRes;
+  },
+
+  requestPasswordReset: async (payload: ForgotPasswordPayload) => {
+    return apiPost('/forgot-password', payload);
+  },
+
+  validateResetToken: async (token: string) => {
+    const encoded = encodeURIComponent(token);
+    return apiGet(`/validate-reset-token?token=${encoded}`);
+  },
+
+  resetPassword: async (payload: ResetPasswordPayload) => {
+    return apiPost('/reset-password', payload);
   },
 
   signin: async (payload: SigninPayload) => {
@@ -161,8 +205,12 @@ export const authService = {
     accessToken = null;
     return;
   },
+
+  createSupportMessage: async (payload: SupportPayload) => {
+    return apiPost('/support/create', payload, true);
+  },
 };
 
-export type { SignupPayload, SigninPayload };
+export type { SignupPayload, SigninPayload, SupportPayload, ForgotPasswordPayload, ResetPasswordPayload };
 
 export default authService;

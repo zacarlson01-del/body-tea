@@ -1,4 +1,4 @@
-const { formatResponse, query, verifyRefreshToken, generateAccessToken, generateRefreshToken, hashToken } = require('./auth-utils');
+const { formatResponse, getCorsHeaders, query, verifyRefreshToken, generateAccessToken, generateRefreshToken, hashToken } = require('./auth-utils');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -77,10 +77,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': process.env.FRONTEND_URL || '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-        'Access-Control-Allow-Credentials': 'true',
+        ...getCorsHeaders(),
         'Set-Cookie': cookieOptions,
       },
       body: JSON.stringify({

@@ -1,0 +1,32 @@
+name: Security Checks
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  audits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Root audit
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+
+      - name: Frontend audit
+        run: |
+          npm --prefix frontend ci
+          npm --prefix frontend audit --omit=dev --audit-level=high
+
+      - name: Backend audit
+        run: |
+          npm --prefix backend ci
+          npm --prefix backend audit --omit=dev --audit-level=high
+

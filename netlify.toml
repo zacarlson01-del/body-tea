@@ -1,12 +1,22 @@
 [build]
   publish = "frontend/build"
-  command = "npm --prefix frontend run build"
+  command = "npm --prefix frontend ci && npm --prefix frontend run build"
 
 [build.environment]
   NODE_VERSION = "18"
 
 [functions]
   directory = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https:; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
 [[redirects]]
   from = "/api/auth/signup"
@@ -35,6 +45,36 @@
 [[redirects]]
   from = "/api/auth/logout"
   to = "/.netlify/functions/auth-logout"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/forgot-password"
+  to = "/.netlify/functions/auth-forgot-password"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/validate-reset-token"
+  to = "/.netlify/functions/auth-validate-reset-token"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/reset-password"
+  to = "/.netlify/functions/auth-reset-password"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/profile-picture"
+  to = "/.netlify/functions/profile-picture"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/support/create"
+  to = "/.netlify/functions/support-create"
   status = 200
   force = true
 

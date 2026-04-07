@@ -1,4 +1,33 @@
-const { formatResponse, query, verifyAccessToken } = require('./auth-utils');
+const { formatResponse, query, verifyAccessToken, buildSignedProfilePictureUrl } = require('./auth-utils');
+
+function inferMimeTypeFromStoredUrl(value) {
+  const str = String(value || '');
+  if (str.endsWith('.jpg') || str.endsWith('.jpeg')) return 'image/jpeg';
+  if (str.endsWith('.png')) return 'image/png';
+  if (str.endsWith('.webp')) return 'image/webp';
+  return 'image/webp';
+}
+
+function buildPictureUrlFromStoredValue(storedValue) {
+  if (typeof storedValue !== 'string' || storedValue.trim().length === 0) return null;
+  if (storedValue.startsWith('profiles/')) {
+    return buildSignedProfilePictureUrl({
+      key: storedValue,
+      mimeType: inferMimeTypeFromStoredUrl(storedValue),
+    });
+  }
+  if (storedValue.includes('/api/auth/profile-picture?')) {
+    try {
+      const parsed = new URL(storedValue, 'https://local.example');
+      const key = parsed.searchParams.get('key');
+      const mimeType = parsed.searchParams.get('mime') || 'image/webp';
+      if (key) return buildSignedProfilePictureUrl({ key, mimeType });
+    } catch (err) {
+      return storedValue;
+    }
+  }
+  return storedValue;
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -38,6 +67,15 @@ exports.handler = async (event) => {
     }
 
     const row = userResult.rows[0];
+    const signedProfilePictureUrl = buildPictureUrlFromStoredValue(row.profile_picture_url);
+    const transactionsResult = await query(
+      `SELECT reference, description, amount, nxt_amount, release_condition, transaction_date
+       FROM transactions
+       WHERE user_id = $1
+       ORDER BY transaction_date DESC
+       LIMIT 20`,
+      [decoded.userId]
+    );
 
     return formatResponse(200, {
       user: {
@@ -46,7 +84,7 @@ exports.handler = async (event) => {
         username: row.username,
         first_name: row.first_name,
         last_name: row.last_name,
-        profile_picture_url: row.profile_picture_url,
+        profile_picture_url: signedProfilePictureUrl,
         phone: row.phone,
         gender: row.gender,
         date_of_birth: row.date_of_birth,
@@ -60,6 +98,7 @@ exports.handler = async (event) => {
         duration_days: row.duration_days,
         personal_item: row.personal_item,
       },
+      transactions: transactionsResult.rows,
     });
   } catch (error) {
     console.error('Me function error', error);

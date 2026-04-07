@@ -1,4 +1,31 @@
-const { formatResponse, query, comparePasswords, generateAccessToken, generateRefreshToken, hashToken } = require('./auth-utils');
+const { formatResponse, getCorsHeaders, query, comparePasswords, generateAccessToken, generateRefreshToken, hashToken, getClientIp, buildSignedProfilePictureUrl } = require('./auth-utils');
+const { checkRateLimit } = require('./rate-limit');
+
+function inferMimeTypeFromStoredUrl(value) {
+  const str = String(value || '');
+  if (str.endsWith('.jpg') || str.endsWith('.jpeg')) return 'image/jpeg';
+  if (str.endsWith('.png')) return 'image/png';
+  if (str.endsWith('.webp')) return 'image/webp';
+  return 'image/webp';
+}
+
+function buildPictureUrlFromStoredValue(storedValue) {
+  if (typeof storedValue !== 'string' || storedValue.trim().length === 0) return null;
+  if (storedValue.startsWith('profiles/')) {
+    return buildSignedProfilePictureUrl({ key: storedValue, mimeType: inferMimeTypeFromStoredUrl(storedValue) });
+  }
+  if (storedValue.includes('/api/auth/profile-picture?')) {
+    try {
+      const parsed = new URL(storedValue, 'https://local.example');
+      const key = parsed.searchParams.get('key');
+      const mimeType = parsed.searchParams.get('mime') || 'image/webp';
+      if (key) return buildSignedProfilePictureUrl({ key, mimeType });
+    } catch (err) {
+      return storedValue;
+    }
+  }
+  return storedValue;
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -10,6 +37,17 @@ exports.handler = async (event) => {
   }
 
   try {
+    const clientIp = getClientIp(event);
+    const rate = await checkRateLimit({
+      namespace: 'auth-signin-ip',
+      key: clientIp,
+      limit: 10,
+      windowSec: 60,
+    });
+    if (!rate.allowed) {
+      return formatResponse(429, { error: 'Too many sign-in attempts. Please try again shortly.' });
+    }
+
     const payload = JSON.parse(event.body || '{}');
     const { username_or_email, password } = payload;
 
@@ -28,13 +66,15 @@ exports.handler = async (event) => {
     }
 
     const user = userResult.rows[0];
+    const storedPicture = user.profile_picture_url;
+    const signedPictureUrl = buildPictureUrlFromStoredValue(storedPicture);
 
     const passwordMatch = await comparePasswords(password, user.password_hash);
     if (!passwordMatch) {
       await query(
         `INSERT INTO audit_logs (user_id, action, status, ip_address, details)
          VALUES ($1, 'signin', 'failed', $2, $3)`,
-        [user.id, event.requestContext?.identity?.sourceIp || 'unknown', JSON.stringify({ reason: 'invalid_password' })]
+        [user.id, clientIp, JSON.stringify({ reason: 'invalid_password' })]
       );
       return formatResponse(401, { error: 'Invalid credentials' });
     }
@@ -53,7 +93,7 @@ exports.handler = async (event) => {
     await query(
       `INSERT INTO audit_logs (user_id, action, status, ip_address)
        VALUES ($1, 'signin', 'success', $2)`,
-      [user.id, event.requestContext?.identity?.sourceIp || 'unknown']
+      [user.id, clientIp]
     );
 
     // Set refresh token as HTTP-only cookie
@@ -70,10 +110,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': process.env.FRONTEND_URL || '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-        'Access-Control-Allow-Credentials': 'true',
+        ...getCorsHeaders(),
         'Set-Cookie': cookieOptions,
       },
       body: JSON.stringify({
@@ -84,7 +121,7 @@ exports.handler = async (event) => {
           username: user.username,
           first_name: user.first_name,
           last_name: user.last_name,
-          profile_picture_url: user.profile_picture_url,
+          profile_picture_url: signedPictureUrl,
         },
         accessToken,
       }),

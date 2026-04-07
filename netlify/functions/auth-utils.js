@@ -18,13 +18,24 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-function formatResponse(statusCode, body, cookies) {
+function getCorsHeaders() {
+  const allowedOrigin = process.env.FRONTEND_URL;
   const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': process.env.FRONTEND_URL || '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin',
+  };
+  if (allowedOrigin) {
+    headers['Access-Control-Allow-Origin'] = allowedOrigin;
+  }
+  return headers;
+}
+
+function formatResponse(statusCode, body, cookies) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...getCorsHeaders(),
   };
 
   if (cookies && cookies.length > 0) {
@@ -85,8 +96,38 @@ function hashToken(token) {
   return require('crypto').createHash('sha256').update(token).digest('hex');
 }
 
+function getClientIp(event) {
+  const xff = event?.headers?.['x-forwarded-for'] || event?.headers?.['X-Forwarded-For'];
+  if (typeof xff === 'string' && xff.trim().length > 0) {
+    return xff.split(',')[0].trim();
+  }
+  return event?.requestContext?.identity?.sourceIp || 'unknown';
+}
+
+function signValue(value, expiresAt) {
+  const crypto = require('crypto');
+  const signingSecret = process.env.PROFILE_PICTURE_SIGNING_SECRET || JWT_SECRET;
+  return crypto.createHmac('sha256', signingSecret).update(`${value}.${expiresAt}`).digest('hex');
+}
+
+function buildSignedProfilePictureUrl({ key, mimeType, ttlSec = 900 }) {
+  if (!key || !mimeType) return null;
+  const expiresAt = Math.floor(Date.now() / 1000) + Math.max(60, Number(ttlSec || 900));
+  const sig = signValue(`${key}|${mimeType}`, expiresAt);
+  return `/api/auth/profile-picture?key=${encodeURIComponent(key)}&mime=${encodeURIComponent(mimeType)}&exp=${expiresAt}&sig=${sig}`;
+}
+
+function verifySignedProfilePictureUrl({ key, mimeType, exp, sig }) {
+  if (!key || !mimeType || !exp || !sig) return false;
+  const expiresAt = Number(exp);
+  if (!Number.isFinite(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) return false;
+  const expected = signValue(`${key}|${mimeType}`, expiresAt);
+  return expected === sig;
+}
+
 module.exports = {
   formatResponse,
+  getCorsHeaders,
   query,
   hashPassword,
   comparePasswords,
@@ -95,4 +136,7 @@ module.exports = {
   verifyAccessToken,
   verifyRefreshToken,
   hashToken,
+  getClientIp,
+  buildSignedProfilePictureUrl,
+  verifySignedProfilePictureUrl,
 };

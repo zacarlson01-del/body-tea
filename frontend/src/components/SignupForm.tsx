@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../stores/authStore';
 
@@ -10,7 +10,6 @@ interface SignupFormData {
   gender: string;
   affiliated_authorities: string;
   date_of_birth: string;
-  escrow_deposit_amount: number;
   duration_days: number;
   personal_item: string;
   profile_picture: FileList;
@@ -31,6 +30,14 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSubmitSuccess, onSwitc
 
   const password = watch('password');
 
+  useEffect(() => {
+    if (!signupSuccess || !onSubmitSuccess) return;
+    const timer = window.setTimeout(() => {
+      onSubmitSuccess();
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [signupSuccess, onSubmitSuccess]);
+
   const onSubmit = async (data: SignupFormData) => {
     try {
       await signup({
@@ -42,12 +49,10 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSubmitSuccess, onSwitc
         gender: data.gender || undefined,
         affiliated_authorities: data.affiliated_authorities || undefined,
         date_of_birth: data.date_of_birth || undefined,
-        escrow_deposit_amount: data.escrow_deposit_amount ? Number(data.escrow_deposit_amount) : undefined,
         duration_days: data.duration_days ? Number(data.duration_days) : undefined,
         personal_item: data.personal_item || undefined,
         profile_picture: data.profile_picture?.[0] || undefined,
       });
-      onSubmitSuccess?.();
     } catch {
       // error shown via authError
     }
@@ -61,10 +66,10 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSubmitSuccess, onSwitc
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-xl font-semibold text-gray-800">Check your email</h3>
+        <h3 className="text-xl font-semibold text-gray-800">Account created successfully</h3>
         <p className="text-gray-500 text-sm">
-          We sent a confirmation link to your email address.<br />
-          Click it to activate your account, then sign in.
+          Your account is ready.<br />
+          Redirecting you to Sign In...
         </p>
         <button type="button" onClick={onSwitchToSignin}
           className="w-full py-3 bg-purple-900 hover:bg-purple-800 text-white font-semibold rounded-lg transition-colors mt-4">
@@ -139,13 +144,6 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSubmitSuccess, onSwitc
       <div>
         <label className={labelClass}>Date of Birth:</label>
         <input type="date" className={fieldClass} {...register('date_of_birth')} />
-      </div>
-
-      {/* Deposit Amount */}
-      <div>
-        <label className={labelClass}>Enter Deposit Amount ($):</label>
-        <input type="number" min="0" step="0.01" className={fieldClass}
-          {...register('escrow_deposit_amount')} />
       </div>
 
       {/* Duration */}

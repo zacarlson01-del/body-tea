@@ -41,6 +41,33 @@ CREATE TABLE IF NOT EXISTS escrow_accounts (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Transactions table
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reference VARCHAR(100) UNIQUE NOT NULL,
+  description TEXT NOT NULL,
+  amount DECIMAL(15, 2) NOT NULL,
+  nxt_amount DECIMAL(15, 2),
+  release_condition VARCHAR(255) DEFAULT 'Compliance',
+  transaction_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Migration safety: ensure per-user NXT fields exist on older transactions tables.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS nxt_amount DECIMAL(15, 2);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS release_condition VARCHAR(255);
+ALTER TABLE transactions ALTER COLUMN release_condition SET DEFAULT 'Compliance';
+
+-- Backfill and cleanup: standardize release condition and remove deprecated status.
+UPDATE transactions
+SET release_condition = 'Compliance'
+WHERE release_condition IS DISTINCT FROM 'Compliance';
+ALTER TABLE transactions DROP COLUMN IF EXISTS nxt_payment;
+ALTER TABLE transactions DROP COLUMN IF EXISTS nxt_compliance;
+ALTER TABLE transactions DROP COLUMN IF EXISTS status;
+DROP INDEX IF EXISTS idx_transactions_status;
+
 -- Profile pictures backup table (for versioning)
 CREATE TABLE IF NOT EXISTS profile_pictures (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,6 +108,9 @@ CREATE INDEX IF NOT EXISTS idx_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_escrow_accounts_user_id ON escrow_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_account_id ON escrow_accounts(account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transaction_date DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_release_condition ON transactions(release_condition);
 CREATE INDEX IF NOT EXISTS idx_profile_pictures_user_id ON profile_pictures(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_expires_at ON refresh_tokens(expires_at);

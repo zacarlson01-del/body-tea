@@ -7,6 +7,12 @@ It includes:
 - Netlify Functions backend (`netlify/functions/`)
 - Neon Postgres via Netlify DB extension
 
+Canonical production path:
+- Runtime/API: `netlify/functions/*`
+- Database schema: `backend/src/db/schema.sql`
+- Deploy config: `netlify.toml`
+- `db/*` and `drizzle.config.ts` are non-production sample scaffolding.
+
 ## 5-Minute Quickstart
 
 ```bash

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../stores/authStore';
+import { authService } from '../services/apiClient';
 
 interface SigninFormData {
   email: string;
@@ -21,7 +22,13 @@ export const SigninForm: React.FC<SigninFormProps> = ({
 }) => {
   const { signin, error: authError, isLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<SigninFormData>({
+  const [openPolicy, setOpenPolicy] = useState<'terms' | 'privacy' | null>(null);
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
+  const [forgotStatus, setForgotStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [forgotMessage, setForgotMessage] = useState('');
+  const { register, handleSubmit, formState: { errors }, reset, getValues } = useForm<SigninFormData>({
     mode: 'onChange',
   });
 
@@ -32,6 +39,32 @@ export const SigninForm: React.FC<SigninFormProps> = ({
       onSubmitSuccess?.();
     } catch {
       // error shown via authError
+    }
+  };
+
+  const handleForgotPasswordClick = () => {
+    const typedEmail = getValues('email');
+    setForgotEmail(typedEmail || '');
+    setForgotStatus('idle');
+    setForgotMessage('');
+    setIsForgotOpen(true);
+    onForgotPassword?.();
+  };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsForgotSubmitting(true);
+      setForgotStatus('idle');
+      setForgotMessage('');
+      await authService.requestPasswordReset({ email: forgotEmail });
+      setForgotStatus('success');
+      setForgotMessage('If this email is registered, a password reset link has been generated.');
+    } catch (error) {
+      setForgotStatus('error');
+      setForgotMessage(error instanceof Error ? error.message : 'Failed to request password reset');
+    } finally {
+      setIsForgotSubmitting(false);
     }
   };
 
@@ -114,7 +147,7 @@ export const SigninForm: React.FC<SigninFormProps> = ({
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={onForgotPassword}
+          onClick={handleForgotPasswordClick}
           className="text-sm text-purple-700 hover:text-purple-900 font-medium"
         >
           Forgot Password?
@@ -133,7 +166,9 @@ export const SigninForm: React.FC<SigninFormProps> = ({
       {/* Links */}
       <div className="text-center text-sm text-gray-500 space-y-1 pt-1">
         <div>
-          <a href="/terms" className="hover:text-gray-700">Terms of Service</a>
+          <button type="button" onClick={() => setOpenPolicy('terms')} className="hover:text-gray-700">
+            Terms of Service
+          </button>
         </div>
         <div>
           Don't have an account?{' '}
@@ -142,9 +177,111 @@ export const SigninForm: React.FC<SigninFormProps> = ({
           </button>
         </div>
         <div>
-          <a href="/privacy" className="hover:text-gray-700">Privacy Policy</a>
+          <button type="button" onClick={() => setOpenPolicy('privacy')} className="hover:text-gray-700">
+            Privacy Policy
+          </button>
         </div>
       </div>
+
+      {openPolicy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close policy modal"
+            onClick={() => setOpenPolicy(null)}
+            className="absolute inset-0 bg-black/60"
+          />
+          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                {openPolicy === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setOpenPolicy(null)}
+                className="text-gray-500 hover:text-gray-700 text-sm font-semibold"
+              >
+                Close
+              </button>
+            </div>
+
+            {openPolicy === 'terms' ? (
+              <div className="space-y-3 text-sm text-gray-700 leading-6">
+                <p className="text-gray-500">Effective: April 6, 2026</p>
+                <p>
+                  These Terms govern your access to and use of the International Secure Escrow Account ("ISEA") website and services. By using ISEA, you agree to these Terms.
+                </p>
+                <p><span className="font-semibold">1. Eligibility</span><br />You must be able to form a legally binding agreement in your jurisdiction to use ISEA.</p>
+                <p><span className="font-semibold">2. Account Security</span><br />You are responsible for maintaining the confidentiality of your login credentials and for all activity under your account.</p>
+                <p><span className="font-semibold">3. Escrow Process</span><br />ISEA may hold funds in escrow according to the transaction details provided by the parties. Funds release, disputes, and refunds follow ISEA's review procedures and may require supporting documentation.</p>
+                <p><span className="font-semibold">4. Prohibited Use</span><br />Fraud, impersonation, or deceptive activity; attempts to bypass security or access other users' data; use of the service for unlawful activities.</p>
+                <p><span className="font-semibold">5. Limitations</span><br />ISEA provides its services "as is" and may update features and policies to improve safety and compliance.</p>
+                <p><span className="font-semibold">6. Contact</span><br />For questions about these Terms, contact support@isea-secure.com or +1 (800) 555-0129.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm text-gray-700 leading-6">
+                <p className="text-gray-500">Effective: April 6, 2026</p>
+                <p>
+                  This Privacy Policy explains how International Secure Escrow Account ("ISEA") collects, uses, and protects your information.
+                </p>
+                <p><span className="font-semibold">1. Information We Collect</span><br />Account information (e.g., name, email, login identifiers); transaction information you submit for escrow processing; basic device and usage data for security and performance.</p>
+                <p><span className="font-semibold">2. How We Use Data</span><br />To operate escrow transactions and support requests; to improve security, detect fraud, and prevent abuse; to comply with applicable laws and enforce policies.</p>
+                <p><span className="font-semibold">3. Data Sharing</span><br />We share information only as needed to provide the service, comply with legal requirements, or protect users and the platform.</p>
+                <p><span className="font-semibold">4. Security</span><br />We use reasonable safeguards to protect your data. No system is 100% secure, so please use strong passwords and keep them private.</p>
+                <p><span className="font-semibold">5. Contact</span><br />For privacy questions, contact privacy@isea-secure.com or +1 (800) 555-0133.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isForgotOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close forgot password modal"
+            onClick={() => setIsForgotOpen(false)}
+            className="absolute inset-0 bg-black/60"
+          />
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Reset Password</h3>
+              <button
+                type="button"
+                onClick={() => setIsForgotOpen(false)}
+                className="text-gray-500 hover:text-gray-700 text-sm font-semibold"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleForgotSubmit} className="space-y-3">
+              <p className="text-sm text-gray-600">
+                Enter your account email and we will generate password reset instructions.
+              </p>
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                required
+              />
+              {forgotStatus !== 'idle' && (
+                <p className={`text-xs ${forgotStatus === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {forgotMessage}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={isForgotSubmitting}
+                className="w-full py-2.5 bg-purple-900 hover:bg-purple-800 text-white font-semibold rounded-lg transition-colors disabled:opacity-60"
+              >
+                {isForgotSubmitting ? 'Submitting...' : 'Send Reset Request'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </form>
   );
 };
