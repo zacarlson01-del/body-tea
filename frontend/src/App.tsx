@@ -6,6 +6,11 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { LandingPage } from './pages/LandingPage';
+import { AboutLandingPage } from './pages/AboutLandingPage';
+import { ContactLandingPage } from './pages/ContactLandingPage';
+import { RefundLandingPage } from './pages/RefundLandingPage';
+import { TestimonialsLandingPage } from './pages/TestimonialsLandingPage';
 import './index.css';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -31,7 +36,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<AuthPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/about" element={<AboutLandingPage />} />
+        <Route path="/contact" element={<ContactLandingPage />} />
+        <Route path="/refund" element={<RefundLandingPage />} />
+        <Route path="/testimonials" element={<TestimonialsLandingPage />} />
         <Route path="/signin" element={<AuthPage />} />
         <Route path="/signup" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

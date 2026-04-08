@@ -1,0 +1,504 @@
+.landing-root {
+  --font-body: 'Trebuchet MS', 'Gill Sans', 'Segoe UI', sans-serif;
+  --font-heading: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+  font-family: var(--font-body);
+  background: #f9f9f9;
+  color: #333;
+}
+
+.landing-root h1,
+.landing-root h2,
+.landing-root h3,
+.landing-root h4 {
+  font-family: var(--font-heading);
+  letter-spacing: 0.01em;
+}
+
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.landing-nav {
+  background: #002b5b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.landing-logo {
+  width: 120px;
+  display: block;
+}
+
+.landing-menu-btn {
+  display: none;
+  font-size: 34px;
+  line-height: 1;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.landing-nav-list {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.landing-nav-list a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.96rem;
+  padding: 0.1rem 0.2rem;
+}
+
+.landing-nav-list a.active {
+  border-bottom: 2px solid #ffd166;
+}
+
+.marketing-main {
+  min-height: calc(100vh - 170px);
+}
+
+.landing-hero {
+  background: linear-gradient(to right, #f0f4f8, #e6ecf2);
+  padding: 4rem 2rem;
+}
+
+.landing-hero-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1.5rem;
+}
+
+.landing-hero-text {
+  flex: 1 1 420px;
+  padding: 1rem 2rem;
+}
+
+.landing-hero-text h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  color: #002b5b;
+  margin-bottom: 0.4rem;
+}
+
+.landing-hero-text h3 {
+  color: #444;
+}
+
+.landing-hero-text p {
+  line-height: 1.6;
+  margin: 1rem 0;
+}
+
+.landing-cta {
+  display: inline-block;
+  padding: 0.8rem 1.5rem;
+  background: #002b5b;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.landing-hero-image img {
+  width: min(320px, 85vw);
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.landing-hero-banner {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  height: 62vh;
+}
+
+.landing-join {
+  max-width: 900px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.landing-join h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.1rem);
+  margin-bottom: 1rem;
+}
+
+.landing-join p {
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.landing-join-actions {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.landing-main-btn {
+  display: inline-block;
+  padding: 14px 28px;
+  font-weight: bold;
+  border-radius: 30px;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+}
+
+.landing-main-btn.secondary {
+  background: #002b5b;
+}
+
+.landing-main-btn:hover {
+  opacity: 0.86;
+}
+
+.landing-membership {
+  padding: 2rem 1.5rem;
+}
+
+.landing-membership h2 {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #002b5b;
+}
+
+.landing-membership-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: flex-start;
+}
+
+.landing-membership-box img {
+  width: 260px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.landing-membership-text {
+  flex: 1;
+}
+
+.landing-membership-text h4 {
+  margin-top: 0;
+  background: linear-gradient(to right, #002b5b, #007bb5);
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.6rem;
+}
+
+.landing-membership-text p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+  font-size: 1.01rem;
+}
+
+.marketing-section {
+  padding: 3rem 1.5rem;
+}
+
+.content-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.page-title {
+  color: #2b2d42;
+  font-size: clamp(1.9rem, 3.4vw, 2.3rem);
+  text-align: center;
+  margin: 0 0 0.8rem;
+}
+
+.page-title.compact {
+  margin-top: 0;
+}
+
+.page-intro {
+  text-align: center;
+  margin-bottom: 1.8rem;
+  line-height: 1.7;
+}
+
+.card-form {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.card-form.light {
+  background: #f9f9f9;
+}
+
+.card-form label {
+  display: block;
+  font-weight: 600;
+  color: #1f2a44;
+  margin-bottom: 0.4rem;
+}
+
+.card-form input,
+.card-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.98rem;
+  font-family: var(--font-body);
+}
+
+.form-note {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.7rem;
+}
+
+.form-success {
+  margin: 0.3rem 0 0.9rem;
+  color: #1f6f43;
+  font-size: 0.93rem;
+  font-weight: 600;
+}
+
+.gold-btn {
+  padding: 12px 25px;
+  background-color: #ffd166;
+  color: #1b1b2f;
+  border: 0;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gold-btn:hover {
+  opacity: 0.9;
+}
+
+.info-grid {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.info-card {
+  border-radius: 12px;
+  border: 1px solid rgba(0, 43, 91, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  padding: 18px;
+}
+
+.info-card h3 {
+  margin: 0 0 0.4rem;
+  color: #2b2d42;
+}
+
+.info-card p {
+  margin: 0;
+}
+
+.legal-copy h3 {
+  color: #2b2d42;
+  margin-top: 1.4rem;
+}
+
+.legal-copy p,
+.legal-copy li {
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+.legal-copy ul {
+  margin: 0.7rem 0 0.8rem;
+}
+
+.legal-copy hr {
+  border: 0;
+  border-top: 1px solid #e4e7ed;
+  margin: 1.3rem 0;
+}
+
+.section-divider {
+  margin: 2.2rem 0;
+  border: 0;
+  border-top: 1px solid #eee;
+}
+
+.review-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.review-card {
+  background: #f1f1f1;
+  padding: 20px;
+  border-left: 5px solid #ffd166;
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(22px);
+  animation: popUp 0.55s ease-out forwards;
+}
+
+.review-title {
+  font-weight: 700;
+  color: #2b2d42;
+  margin-bottom: 6px;
+}
+
+.review-stars {
+  font-size: 16px;
+  color: #e2a104;
+  margin-bottom: 8px;
+}
+
+.review-name {
+  margin-top: 10px;
+  font-weight: 700;
+  color: #555;
+}
+
+@keyframes popUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.review-card:nth-child(1) { animation-delay: 0.08s; }
+.review-card:nth-child(2) { animation-delay: 0.16s; }
+.review-card:nth-child(3) { animation-delay: 0.24s; }
+.review-card:nth-child(4) { animation-delay: 0.32s; }
+.review-card:nth-child(5) { animation-delay: 0.4s; }
+.review-card:nth-child(6) { animation-delay: 0.48s; }
+.review-card:nth-child(7) { animation-delay: 0.56s; }
+.review-card:nth-child(8) { animation-delay: 0.64s; }
+
+.about-us-section {
+  max-width: 980px;
+  margin: 0 auto;
+  line-height: 1.7;
+  font-size: 1.02rem;
+}
+
+.about-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.about-logo {
+  width: 60px;
+  height: auto;
+}
+
+.about-us-section ul {
+  padding-left: 1.2rem;
+  list-style-type: disc;
+}
+
+.landing-footer {
+  text-align: center;
+  background: #002b5b;
+  color: #fff;
+  padding: 1rem;
+}
+
+.landing-footer p {
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 768px) {
+  .landing-menu-btn {
+    display: block;
+  }
+
+  .landing-nav-list {
+    display: none;
+    position: absolute;
+    top: 68px;
+    right: 1rem;
+    width: min(280px, calc(100vw - 2rem));
+    background: #002b5b;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 0.5rem;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .landing-nav-list.open {
+    display: flex;
+  }
+
+  .landing-nav-list a {
+    display: block;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .landing-nav-list a.active {
+    border-bottom: 0;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+  }
+
+  .landing-hero {
+    padding: 2.2rem 1rem;
+  }
+
+  .landing-hero-container {
+    flex-direction: column-reverse;
+    text-align: center;
+  }
+
+  .landing-hero-text {
+    padding: 0.5rem 0.2rem;
+  }
+
+  .landing-hero-text h1 {
+    font-size: 2rem;
+  }
+
+  .landing-hero-banner {
+    height: 45vh;
+  }
+
+  .landing-membership-box {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .landing-membership-box img {
+    width: 92%;
+  }
+
+  .marketing-section {
+    padding: 2rem 1rem;
+  }
+
+  .card-form {
+    padding: 18px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}

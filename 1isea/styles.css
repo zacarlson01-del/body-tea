@@ -1,0 +1,252 @@
+
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; color: #333; }
+header nav { background: #002b5b; display: flex; justify-content: space-between; align-items: center; padding: 1rem; }
+.logo { width: 120px; }
+.nav-list { list-style: none; display: flex; gap: 1rem; }
+.nav-list li a { color: white; text-decoration: none; }
+.menu-toggle { display: none; font-size: 24px; color: white; cursor: pointer; }
+.hero { text-align: center; padding: 2rem; background: #eee; }
+.hero-img { width: 200px; border-radius: 10px; }
+section { padding: 2rem; }
+form input, form textarea { width: 100%; padding: 0.5rem; margin: 0.5rem 0; }
+form button { padding: 0.7rem 1.5rem; background: #002b5b; color: white; border: none; }
+footer { text-align: center; background: #002b5b; color: white; padding: 1rem; }
+
+@media (max-width: 768px) {
+  .nav-list { display: none; flex-direction: column; }
+  .menu-toggle { display: block; }
+  .nav-list.active { display: flex; }
+}
+
+
+/* Updated Hero Section Styles */
+
+.hero {
+  background: linear-gradient(to right, #f0f4f8, #e6ecf2);
+  padding: 4rem 2rem;
+}
+.hero-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-around;
+}
+.hero-text {
+  flex: 1 1 400px;
+  padding: 1rem 2rem;
+}
+.hero-text h1 {
+  font-size: 2.5rem;
+  color: #002b5b;
+}
+.hero-text h3 {
+  color: #444;
+}
+.hero-text p {
+  line-height: 1.6;
+  margin: 1rem 0;
+}
+.cta-button {
+  display: inline-block;
+  padding: 0.8rem 1.5rem;
+  background: #002b5b;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+}
+.hero-image img {
+  width: 280px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+@media (max-width: 768px) {
+  .hero-container {
+    flex-direction: column-reverse;
+    text-align: center;
+  }
+}
+
+
+/* About Us Section Styling */
+
+.about-us-section {
+  padding: 2rem 1.5rem;
+  line-height: 1.7;
+  font-size: 1.05rem;
+}
+.about-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.about-logo {
+  width: 60px;
+  height: auto;
+}
+.about-us-section ul {
+  padding-left: 1.2rem;
+  list-style-type: disc;
+}
+.about-us-section h3, .about-us-section h4 {
+  color: #002b5b;
+}
+
+
+/* Gradient Headings & Animation */
+
+.about-us-section h3,
+.about-us-section h4 {
+  background: linear-gradient(to right, #002b5b, #007bb5);
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 5px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  margin-top: 2rem;
+  animation: slideFade 0.8s ease forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes slideFade {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* Membership Section */
+
+.membership-section {
+  padding: 2rem 1.5rem;
+}
+.membership-section h2 {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #002b5b;
+}
+.membership-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: flex-start;
+}
+.membership-box img {
+  width: 260px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.membership-text {
+  flex: 1;
+}
+.membership-text h4 {
+  margin-top: 0;
+  background: linear-gradient(to right, #002b5b, #007bb5);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.6rem;
+}
+.membership-text p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+@media (max-width: 768px) {
+  .membership-box {
+    flex-direction: column;
+    align-items: center;
+  }
+  .membership-box img {
+    width: 90%;
+  }
+}
+
+
+/* Scroll Animation for Membership Boxes */
+
+/* Animation Keyframes */
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.membership-box {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.membership-box.visible {
+  animation: fadeSlideUp 0.8s ease forwards;
+}
+
+
+/* === Rebuilt Hamburger Menu: Bigger + Easier Tap Target === */
+.menu-toggle{
+  font-size: 34px;          /* bigger icon */
+  line-height: 1;
+  padding: 10px 14px;       /* larger tap area */
+  border-radius: 10px;
+  user-select: none;
+}
+
+/* Optional: keep menu readable on mobile */
+@media (max-width: 768px){
+  .nav-list{
+    gap: 0.6rem;
+    padding: 1rem 0;
+  }
+  .nav-list li a{
+    display: block;
+    padding: 10px 16px;
+  }
+}
+
+
+/* === ISEA Home Hero Layer === */
+.isea-hero-image{
+  background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+              url('images/isea-hero.jpg') center/cover no-repeat;
+  height: 70vh;
+}
+
+.isea-join{
+  max-width: 900px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.isea-join h2{
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.isea-join p{
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.isea-btn{
+  display: inline-block;
+  margin-top: 1.5rem;
+  padding: 14px 28px;
+  font-weight: bold;
+  border-radius: 30px;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+}
+
+.isea-btn:hover{
+  opacity: 0.85;
+}
