@@ -17,7 +17,7 @@
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.20.0"
+    "pg": "^8.21.0"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
