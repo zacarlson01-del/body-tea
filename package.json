@@ -12,7 +12,7 @@
     "db:studio": "netlify dev:exec drizzle-kit studio"
   },
   "dependencies": {
-    "@netlify/blobs": "^10.7.4",
+    "@netlify/blobs": "^10.7.8",
     "@netlify/neon": "^0.1.2",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
